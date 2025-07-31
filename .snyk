@@ -1,0 +1,28 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+
+# Ignore specific vulnerabilities (add as needed)
+ignore: {}
+
+# Language settings
+language-settings:
+  javascript:
+    # Ignore dev dependencies in security scans
+    ignoreDevDependencies: true
+
+# Patch settings
+patch: {}
+
+# Exclude paths from scanning
+exclude:
+  global:
+    - "**/*.test.js"
+    - "**/*.test.ts"
+    - "**/*.test.tsx"
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/coverage/**"
+    - "**/node_modules/**"
+    - "**/android/build/**"
+    - "**/ios/build/**"
+    - "**/ios/Pods/**"

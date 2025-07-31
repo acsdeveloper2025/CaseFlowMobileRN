@@ -1,24 +1,157 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# CaseFlow Mobile
 
-# Getting Started
+A React Native mobile application for case flow management, built with TypeScript and modern development practices.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 🚀 Features
 
-## Step 1: Start Metro
+- **Cross-platform**: iOS and Android support
+- **TypeScript**: Full type safety and better developer experience
+- **Modern UI**: Built with NativeWind (Tailwind CSS for React Native)
+- **AI Integration**: Google Gemini AI for case summarization
+- **Environment Management**: Multiple environment configurations
+- **CI/CD Pipeline**: Automated testing, building, and deployment
+- **Code Quality**: ESLint, Prettier, and pre-commit hooks
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 📋 Prerequisites
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+Make sure you have completed the [React Native Environment Setup](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
-```sh
-# Using npm
-npm start
+### Required Tools
 
-# OR using Yarn
-yarn start
+- **Node.js**: >= 18.0.0
+- **npm**: >= 8.0.0
+- **Java**: 17 (for Android development)
+- **Xcode**: Latest version (for iOS development)
+- **Android Studio**: Latest version (for Android development)
+
+## 🛠️ Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/acsdeveloper2025/CaseFlowMobileRN.git
+   cd CaseFlowMobileRN
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Install iOS dependencies** (iOS only)
+
+   ```bash
+   cd ios && pod install && cd ..
+   ```
+
+4. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+The app uses environment-specific configuration files:
+
+- `.env.development` - Development environment
+- `.env.staging` - Staging environment
+- `.env.production` - Production environment
+
+Copy `.env.example` to `.env` and configure the required variables:
+
+```bash
+# Required
+API_KEY=your_gemini_api_key_here
+API_BASE_URL=https://your-api-url.com
+
+# Optional
+ENABLE_ANALYTICS=true
+ENABLE_DEBUG_MODE=false
 ```
 
-## Step 2: Build and run your app
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete configuration details.
+
+## 🏃‍♂️ Getting Started
+
+### Development
+
+1. **Start Metro bundler**
+
+   ```bash
+   npm start
+   ```
+
+2. **Run the app**
+
+   **For Android:**
+
+   ```bash
+   # Development environment
+   npm run android:dev
+
+   # Staging environment
+   npm run android:staging
+
+   # Production environment
+   npm run android:prod
+   ```
+
+   **For iOS:**
+
+   ```bash
+   # Development environment
+   npm run ios:dev
+
+   # Staging environment
+   npm run ios:staging
+
+   # Production environment
+   npm run ios:prod
+   ```
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+# Run tests once
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## 🔍 Code Quality
+
+The project includes automated code quality checks:
+
+```bash
+# Lint code
+npm run lint
+
+# Format code
+npx prettier --write .
+
+# Type check
+npx tsc --noEmit
+```
+
+### Pre-commit Hooks
+
+The project uses Husky and lint-staged for pre-commit hooks that automatically:
+
+- Run ESLint and fix issues
+- Format code with Prettier
+- Run type checking
+
+## 🏗️ Building for Production
 
 With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
 

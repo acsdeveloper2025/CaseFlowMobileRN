@@ -1,0 +1,187 @@
+name: Deploy to App Stores
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  RUBY_VERSION: '2.7'
+
+jobs:
+  # Deploy to Google Play Store
+  deploy-android:
+    name: Deploy Android to Play Store
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create environment file
+      run: |
+        if [ "${{ github.event.inputs.environment }}" = "production" ] || [ "${{ github.event_name }}" = "release" ]; then
+          cp .env.production .env
+        else
+          cp .env.staging .env
+        fi
+        
+    - name: Set environment variables
+      run: |
+        echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+        echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" >> .env
+        
+    - name: Decode Android keystore
+      run: |
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+        
+    - name: Create keystore properties
+      run: |
+        echo "storeFile=release.keystore" > android/keystore.properties
+        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> android/keystore.properties
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/keystore.properties
+        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/keystore.properties
+        
+    - name: Make gradlew executable
+      run: chmod +x android/gradlew
+      
+    - name: Build Android AAB
+      run: |
+        cd android
+        ./gradlew bundleRelease
+        
+    - name: Upload to Google Play Store
+      uses: r0adkll/upload-google-play@v1
+      with:
+        serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        packageName: com.caseflowmobilern
+        releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+        track: ${{ github.event.inputs.environment == 'staging' && 'internal' || 'production' }}
+        status: completed
+
+  # Deploy to Apple App Store
+  deploy-ios:
+    name: Deploy iOS to App Store
+    runs-on: macos-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+        bundler-cache: true
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create environment file
+      run: |
+        if [ "${{ github.event.inputs.environment }}" = "production" ] || [ "${{ github.event_name }}" = "release" ]; then
+          cp .env.production .env
+        else
+          cp .env.staging .env
+        fi
+        
+    - name: Set environment variables
+      run: |
+        echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+        echo "API_BASE_URL=${{ secrets.API_BASE_URL }}" >> .env
+        
+    - name: Install CocoaPods
+      run: |
+        cd ios
+        pod install
+        
+    - name: Import Code-Signing Certificates
+      uses: Apple-Actions/import-codesign-certs@v2
+      with:
+        p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+        p12-password: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+        
+    - name: Install Provisioning Profile
+      run: |
+        echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 -d > ios/profile.mobileprovision
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp ios/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+        
+    - name: Build and Archive iOS app
+      run: |
+        xcodebuild -workspace ios/CaseFlowMobileRN.xcworkspace \
+          -scheme CaseFlowMobileRN \
+          -configuration Release \
+          -destination generic/platform=iOS \
+          -archivePath ios/build/CaseFlowMobileRN.xcarchive \
+          archive
+          
+    - name: Export IPA
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath ios/build/CaseFlowMobileRN.xcarchive \
+          -exportPath ios/build \
+          -exportOptionsPlist ios/ExportOptions.plist
+          
+    - name: Upload to App Store Connect
+      run: |
+        xcrun altool --upload-app \
+          --type ios \
+          --file ios/build/*.ipa \
+          --username ${{ secrets.APPLE_ID_EMAIL }} \
+          --password ${{ secrets.APPLE_ID_PASSWORD }}
+
+  # Notify deployment status
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy-android, deploy-ios]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: needs.deploy-android.result == 'success' && needs.deploy-ios.result == 'success'
+      run: |
+        echo "✅ Deployment successful to ${{ github.event.inputs.environment || 'production' }}"
+        
+    - name: Notify failure
+      if: needs.deploy-android.result == 'failure' || needs.deploy-ios.result == 'failure'
+      run: |
+        echo "❌ Deployment failed to ${{ github.event.inputs.environment || 'production' }}"
